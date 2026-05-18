@@ -1,5 +1,6 @@
 use reqwest;
 use std::path::PathBuf;
+use std::time::Duration;
 use std::{env, fs};
 
 fn directory_path() -> PathBuf {
@@ -27,18 +28,32 @@ fn directory_check() {
     }
 }
 
+fn duration_check(path: &PathBuf) -> bool {
+    if !path.exists() {
+        return true;
+    }
+    if let Ok(metadata) = fs::metadata(path) {
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(elapsed) = modified.elapsed() {
+                let one_day = Duration::from_secs(24 * 60 * 60);
+                
+                return elapsed >= one_day;
+            }
+        }
+    }
+    true
+}
+
 pub fn get_company_tickers() {
     directory_check();
 
-    if ticker_file_path().exists() {
-        return;
-    }
+    if !duration_check(&ticker_file_path()) {return;}
 
     let client = reqwest::blocking::Client::new();
 
     let json_file = client
         .get("https://www.sec.gov/files/company_tickers.json")
-        .header("User-Agent", "company-analyzer/1.0 pminseo2004@gmail.com")
+        .header("User-Agent", "company-analyzer pminseo2004@gmail.com")
         .send()
         .unwrap()
         .text()
@@ -67,9 +82,7 @@ pub fn return_ticker(tkr: &str) -> String {
 pub fn get_company_facts(ticker: &str, cik_ticker: &str) {
     directory_check();
 
-    if facts_file_path(ticker).exists() {
-        return;
-    }
+    if !duration_check(&facts_file_path(ticker)) {return;}
 
     let client = reqwest::blocking::Client::new();
 
@@ -78,7 +91,7 @@ pub fn get_company_facts(ticker: &str, cik_ticker: &str) {
             "https://data.sec.gov/api/xbrl/companyfacts/CIK{}.json",
             cik_ticker
         ))
-        .header("User-Agent", "company-analyzer/1.0 pminseo2004@gmail.com")
+        .header("User-Agent", "company-analyzer pminseo2004@gmail.com")
         .send()
         .unwrap()
         .text()
