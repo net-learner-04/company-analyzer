@@ -5,7 +5,7 @@ use std::{env, fs};
 fn directory_path() -> PathBuf {
     let env = env::var("HOME").expect("Failed to find home directory");
     let mut path = PathBuf::from(env);
-    path.push("company-analyzer");
+    path.push("ca_json");
     path
 }
 
