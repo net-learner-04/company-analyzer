@@ -70,9 +70,9 @@ pub fn return_ticker(tkr: &str) -> String {
         .expect("Failed to read the string file after converting it to JSON");
 
     for (_, value) in json_file.as_object().unwrap() {
-        if value["ticker"].as_str() == Some(tkr) {
-            let cik = value["cik_str"].as_u64().unwrap();
-            cik_str = format!("{:010}", cik);
+    if value["ticker"].as_str() == Some(tkr) {
+        cik_str = format!("{:010}", value["cik_str"].as_u64().unwrap());
+        break;
         }
     }
 
