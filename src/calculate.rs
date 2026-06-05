@@ -221,7 +221,7 @@ pub fn print(ticker: &str, data: parse::Data) {
         .set_content_arrangement(ContentArrangement::Dynamic);
 
     {
-        let mut header = vec![Cell::new(format!("  {}  재무요약", ticker))
+        let mut header = vec![Cell::new(format!("  {}  재무제표", ticker))
             .add_attribute(Attribute::Bold)
             .fg(Color::Green)];
         for y in &years {
