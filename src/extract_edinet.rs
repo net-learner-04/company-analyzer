@@ -38,15 +38,10 @@ fn facts_path(sec: &str) -> PathBuf {
 }
 
 fn stale(path: &PathBuf) -> bool {
-    if !path.exists() {
-        return true;
-    }
+    if !path.exists() { return true; }
     fs::metadata(path)
         .and_then(|m| m.modified())
-        .and_then(|t| {
-            t.elapsed()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-        })
+        .and_then(|t| t.elapsed().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)))
         .map(|d| d >= Duration::from_secs(86400))
         .unwrap_or(true)
 }
@@ -103,9 +98,7 @@ fn find_reports(client: &Client, sec: &str, key: &str) -> Vec<(String, String)> 
     if !stale(&idx) {
         if let Ok(s) = fs::read_to_string(&idx) {
             if let Ok(v) = serde_json::from_str::<Vec<(String, String)>>(&s) {
-                if !v.is_empty() {
-                    return v;
-                }
+                if !v.is_empty() { return v; }
             }
         }
     }
@@ -116,32 +109,20 @@ fn find_reports(client: &Client, sec: &str, key: &str) -> Vec<(String, String)> 
     eprint!("[EDINET] {} 연간보고서 검색", sec);
 
     for day in 0u64..500 {
-        if day % 60 == 59 {
-            eprint!(".");
-        }
-
+        if day % 60 == 59 { eprint!("."); }
         for doc in fetch_day(client, &date_ago(day), key) {
-            if doc["formCode"].as_str() != Some("030000") {
-                continue;
-            }
+            if doc["formCode"].as_str() != Some("030000") { continue; }
             let sc = doc["secCode"].as_str().unwrap_or("");
-            if sc != sec5 && sc != sec {
-                continue;
-            }
+            if sc != sec5 && sc != sec { continue; }
             let id  = doc["docID"].as_str().unwrap_or("").to_string();
             let end = doc["periodEnd"].as_str().unwrap_or("").to_string();
-            if id.is_empty() || end.len() < 4 {
-                continue;
-            }
+            if id.is_empty() || end.len() < 4 { continue; }
             let yr = &end[..4];
             if !found.iter().any(|(_, e)| e.starts_with(yr)) {
                 found.push((id, end));
             }
         }
-
-        if found.len() >= 5 {
-            break;
-        }
+        if found.len() >= 5 { break; }
         thread::sleep(Duration::from_millis(60));
     }
 
@@ -161,15 +142,12 @@ fn download_zip(client: &Client, doc_id: &str, key: &str) -> Option<Vec<u8>> {
         doc_id, key
     );
     let r = client.get(&url).timeout(Duration::from_secs(60)).send().ok()?;
-    if !r.status().is_success() {
-        return None;
-    }
+    if !r.status().is_success() { return None; }
     Some(r.bytes().ok()?.to_vec())
 }
 
 fn xbrl_from_zip(bytes: &[u8]) -> Option<String> {
     let mut arc = ZipArchive::new(Cursor::new(bytes)).ok()?;
-
     let mut best_i   = None;
     let mut best_sz  = 0usize;
     let mut best_pri = false;
@@ -178,9 +156,7 @@ fn xbrl_from_zip(bytes: &[u8]) -> Option<String> {
         if let Ok(f) = arc.by_index(i) {
             let name = f.name().to_lowercase();
             let sz   = f.size() as usize;
-            if !name.ends_with(".xbrl") {
-                continue;
-            }
+            if !name.ends_with(".xbrl") { continue; }
             let pri = name.contains("asr") || name.contains("030000");
             if (pri && !best_pri) || (pri == best_pri && sz > best_sz) {
                 best_i   = Some(i);
@@ -196,24 +172,12 @@ fn xbrl_from_zip(bytes: &[u8]) -> Option<String> {
     Some(String::from_utf8_lossy(&raw).into_owned())
 }
 
-const REV: &[&str] = &[
-    "NetSales", "NetSalesAndRevenues", "Revenue", "Revenues",
-    "NetSalesSummaryOfBusinessResults",
-];
-const OPE: &[&str] = &[
-    "OperatingIncome", "OperatingProfit", "OperatingProfitLoss", "OperatingIncomeLoss",
-];
-const NET: &[&str] = &[
-    "ProfitAttributableToOwnersOfParent",
-    "ProfitLossAttributableToOwnersOfParent",
-    "NetIncome", "NetIncomeLoss", "ProfitLoss",
-];
+const REV: &[&str] = &["NetSales", "NetSalesAndRevenues", "Revenue", "Revenues", "NetSalesSummaryOfBusinessResults"];
+const OPE: &[&str] = &["OperatingIncome", "OperatingProfit", "OperatingProfitLoss", "OperatingIncomeLoss"];
+const NET: &[&str] = &["ProfitAttributableToOwnersOfParent", "ProfitLossAttributableToOwnersOfParent", "NetIncome", "NetIncomeLoss", "ProfitLoss"];
 const AST: &[&str] = &["Assets", "TotalAssets"];
 const LIA: &[&str] = &["Liabilities", "TotalLiabilities"];
-const EQT: &[&str] = &[
-    "EquityAttributableToOwnersOfParent", "NetAssets",
-    "TotalNetAssets", "StockholdersEquity",
-];
+const EQT: &[&str] = &["EquityAttributableToOwnersOfParent", "NetAssets", "TotalNetAssets", "StockholdersEquity"];
 
 fn is_target(n: &str) -> bool {
     [REV, OPE, NET, AST, LIA, EQT].iter().any(|t| t.contains(&n))
@@ -222,23 +186,19 @@ fn is_target(n: &str) -> bool {
 fn ctx_score(c: &str) -> i32 {
     let c = c.to_ascii_lowercase();
     let mut s = 0i32;
-    if c.contains("currentyear") { s += 100; }
-    if c.contains("consolidated") { s += 30; }
+    if c.contains("currentyear")    { s += 100; }
+    if c.contains("consolidated")   { s +=  30; }
     if c.contains("prior") || c.contains("previous") { s -= 300; }
     if c.contains("nonconsolidated") || c.contains("individual") { s -= 100; }
-    if c.contains("segment") { s -= 50; }
+    if c.contains("segment")        { s -=  50; }
     s
 }
 
 fn apply_scale(raw: i64, dec: i32) -> i64 {
     let e = (-dec).clamp(-18i32, 18i32);
-    if e > 0 {
-        raw.saturating_mul(10i64.pow(e as u32))
-    } else if e < 0 {
-        raw / 10i64.pow((-e) as u32)
-    } else {
-        raw
-    }
+    if e > 0      { raw.saturating_mul(10i64.pow(e as u32)) }
+    else if e < 0 { raw / 10i64.pow((-e) as u32) }
+    else          { raw }
 }
 
 fn parse_xbrl(xml: &str) -> HashMap<String, Vec<(String, i64)>> {
@@ -246,7 +206,6 @@ fn parse_xbrl(xml: &str) -> HashMap<String, Vec<(String, i64)>> {
     rdr.trim_text(true);
     let mut buf  = Vec::new();
     let mut data: HashMap<String, Vec<(String, i64)>> = HashMap::new();
-
     let mut curr_name: Option<String> = None;
     let mut curr_ctx  = String::new();
     let mut curr_dec  = 0i32;
@@ -291,9 +250,7 @@ fn parse_xbrl(xml: &str) -> HashMap<String, Vec<(String, i64)>> {
                     }
                 }
             }
-            Ok(Event::End(_)) => {
-                curr_name = None;
-            }
+            Ok(Event::End(_)) => { curr_name = None; }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
         }
@@ -368,21 +325,15 @@ pub fn get_data(sec_code: &str) -> parse::Data {
     let cache  = facts_path(sec_code);
 
     if !stale(&cache) {
-        if let Some(d) = load_cache(&cache) {
-            return d;
-        }
+        if let Some(d) = load_cache(&cache) { return d; }
     }
 
     let reports = find_reports(&client, sec_code, &key);
     if reports.is_empty() {
         eprintln!("[EDINET] 증권코드 {}의 연간보고서를 찾을 수 없습니다.", sec_code);
         return parse::Data {
-            revenues:            vec![],
-            operatingincomeloss: vec![],
-            netincomeloss:       vec![],
-            assets:              vec![],
-            liabilities:         vec![],
-            stockholdersequity:  vec![],
+            revenues: vec![], operatingincomeloss: vec![], netincomeloss: vec![],
+            assets: vec![], liabilities: vec![], stockholdersequity: vec![],
         };
     }
 
@@ -391,7 +342,6 @@ pub fn get_data(sec_code: &str) -> parse::Data {
 
     for (doc_id, period_end) in &reports {
         eprint!("[EDINET] {} 취득 중...", period_end);
-
         let zip = match download_zip(&client, doc_id, &key) {
             Some(z) => z,
             None    => { eprintln!(" 다운로드 실패"); continue; }
@@ -408,7 +358,6 @@ pub fn get_data(sec_code: &str) -> parse::Data {
 
         let [r, o, n, a, l, e] = row;
         let e = if e == 0 && a > 0 { a - l } else { e };
-
         rev.push((period_end.clone(), r));
         ope.push((period_end.clone(), o));
         net.push((period_end.clone(), n));
@@ -424,12 +373,8 @@ pub fn get_data(sec_code: &str) -> parse::Data {
     }
 
     let data = parse::Data {
-        revenues:            rev,
-        operatingincomeloss: ope,
-        netincomeloss:       net,
-        assets:              ast,
-        liabilities:         lia,
-        stockholdersequity:  eqt,
+        revenues: rev, operatingincomeloss: ope, netincomeloss: net,
+        assets: ast, liabilities: lia, stockholdersequity: eqt,
     };
     save_cache(&data, &cache);
     data
