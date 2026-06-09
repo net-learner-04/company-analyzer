@@ -53,9 +53,9 @@ fn stale(path: &PathBuf) -> bool {
 
 fn api_key() -> String {
     env::var("EDINET_API_KEY").unwrap_or_else(|_| {
-        eprintln!("[Error] Please set the EDINET_API_KEY environment variable.");
-        eprintln!("  Issuance : https://api.edinet-fsa.go.jp/");
-        eprintln!("  Settings : export EDINET_API_KEY=<key>");
+        eprintln!("[오류] EDINET_API_KEY 환경변수를 설정해주세요.");
+        eprintln!("  발급 : https://api.edinet-fsa.go.jp/");
+        eprintln!("  설정 : export EDINET_API_KEY=<key>");
         std::process::exit(1);
     })
 }
@@ -113,7 +113,7 @@ fn find_reports(client: &Client, sec: &str, key: &str) -> Vec<(String, String)> 
     let sec5 = format!("{}0", sec);
     let mut found: Vec<(String, String)> = Vec::new();
 
-    eprint!("[EDINET] {} Search Annual Reports", sec);
+    eprint!("[EDINET] {} 연간보고서 검색", sec);
 
     for day in 0u64..500 {
         if day % 60 == 59 {
@@ -375,7 +375,7 @@ pub fn get_data(sec_code: &str) -> parse::Data {
 
     let reports = find_reports(&client, sec_code, &key);
     if reports.is_empty() {
-        eprintln!("[EDINET] The annual report for stock code {} cannot be found.", sec_code);
+        eprintln!("[EDINET] 증권코드 {}의 연간보고서를 찾을 수 없습니다.", sec_code);
         return parse::Data {
             revenues:            vec![],
             operatingincomeloss: vec![],
@@ -394,17 +394,17 @@ pub fn get_data(sec_code: &str) -> parse::Data {
 
         let zip = match download_zip(&client, doc_id, &key) {
             Some(z) => z,
-            None    => { eprintln!(" Download failed"); continue; }
+            None    => { eprintln!(" 다운로드 실패"); continue; }
         };
         let xbrl = match xbrl_from_zip(&zip) {
             Some(x) => x,
-            None    => { eprintln!(" XBRL extraction failed"); continue; }
+            None    => { eprintln!(" XBRL 추출 실패"); continue; }
         };
         let row = match xbrl_to_row(&xbrl) {
             Some(r) => r,
-            None    => { eprintln!(" Parsing Failed"); continue; }
+            None    => { eprintln!(" 파싱 실패"); continue; }
         };
-        eprintln!(" Done");
+        eprintln!(" 완료");
 
         let [r, o, n, a, l, e] = row;
         let e = if e == 0 && a > 0 { a - l } else { e };
