@@ -6,9 +6,9 @@ mod parse;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("How to use: {} <ticker>", args[0]);
-        eprintln!("  U.S. Stocks: {} AAPL", args[0]);
-        eprintln!("  J.P. Stocks: {} JP:7203  (4-digit stock code)", args[0]);
+        eprintln!("사용법: {} <ticker>", args[0]);
+        eprintln!("  미국 주식: {} AAPL", args[0]);
+        eprintln!("  일본 주식: {} JP:7203  (증권코드 4자리)", args[0]);
         std::process::exit(1);
     }
 
@@ -21,7 +21,7 @@ fn main() {
         extract::get_company_tickers();
         let cik = extract::return_ticker(&input);
         if cik.is_empty() {
-            eprintln!("The ticker cannot be found: {}", input);
+            eprintln!("티커를 찾을 수 없습니다: {}", input);
             std::process::exit(1);
         }
         extract::get_company_facts(&input, &cik);
